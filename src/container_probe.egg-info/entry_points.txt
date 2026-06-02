@@ -1,0 +1,2 @@
+[console_scripts]
+container-probe = container_probe.cli:main

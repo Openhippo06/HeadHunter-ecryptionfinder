@@ -1,0 +1,107 @@
+# .github/workflows/build.yml
+# Triggered when you push a tag like v1.0.0
+# Builds ContainerProbeSetup-*.exe (Windows) and ContainerProbe-*.dmg (macOS)
+# and attaches both to the GitHub Release automatically.
+
+name: Build Installers
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:   # also lets you trigger manually from the Actions tab
+
+jobs:
+
+  # ── Windows ──────────────────────────────────────────────────────────────
+  build-windows:
+    name: Windows installer (.exe)
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Python dependencies
+        run: |
+          pip install --upgrade pip
+          pip install customtkinter pyinstaller
+          pip install -e .        # installs container_probe package itself
+
+      - name: Build executable
+        run: python build.py --windows
+
+      - name: Build Inno Setup installer
+        uses: Minionguyjpro/Inno-Setup-Action@v1.2.4
+        with:
+          path: installer/windows.iss
+
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-installer
+          path: Output/ContainerProbeSetup-*.exe
+
+  # ── macOS ─────────────────────────────────────────────────────────────────
+  build-macos:
+    name: macOS installer (.dmg)
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install system deps
+        run: brew install create-dmg
+
+      - name: Install Python dependencies
+        run: |
+          pip install --upgrade pip
+          pip install customtkinter pyinstaller
+          pip install -e .
+
+      - name: Build app + DMG
+        run: python build.py --macos
+
+      - name: Upload DMG artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-dmg
+          path: "*.dmg"
+
+  # ── Attach to GitHub Release ──────────────────────────────────────────────
+  release:
+    name: Publish to GitHub Release
+    needs: [build-windows, build-macos]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+
+    steps:
+      - name: Download Windows artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-installer
+          path: release/
+
+      - name: Download macOS artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: macos-dmg
+          path: release/
+
+      - name: Attach to Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

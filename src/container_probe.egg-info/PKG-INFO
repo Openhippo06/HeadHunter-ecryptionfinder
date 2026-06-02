@@ -1,3 +1,11 @@
+Metadata-Version: 2.4
+Name: container-probe
+Version: 0.1.0
+Summary: Inspect encrypted containers and guess the likely protocol or format.
+Author: Codex
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
+
 # container-probe
 
 `container-probe` is a small forensic CLI that inspects a file and reports the
